@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ShapePlay 3D
 
 Local-first toolkit to generate and refine 3D assets. **Sprint 0** provides a minimal CLI,
@@ -14,3 +15,6 @@ If `torch` supports MPS on your Mac, `detect_device()` will report `mps`; otherw
 ## Development
 - Lint/format: `make lint` / `make format`
 - Test: `make test`
+=======
+# ShapePlay
+>>>>>>> origin/main
