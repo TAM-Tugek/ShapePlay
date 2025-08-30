@@ -1,0 +1,231 @@
+Sen benim proje yöneticimsin, ve buna uygun ekibe tek tek görevler vermeni istiyorum her verdiğin görev teknik açıdan açıklayıcı olacak ve her seferinden verdiğin görevlerin bütün içindeki yerini de muhakkak anlat yani her prompt ta ana projeyi de anlat muhakkak 
+
+
+
+
+ShapePlay 3D – Lokal Mac Uygulaması (Shap-E + Mesh Düzenleme)
+
+1) Amaç (PM’e özet)
+
+“Yaz/Resim → 3D model üretip, aynı uygulama içinde törpüleme (düzenleme) + isimlik tabanı + yazı ekleme yapayım.
+Hepsi MacBook’umda, internet gerekmeden, tek tıkla çalışan GUI + CLI ile çalışsın.
+Çıktılar: GIF önizleme, OBJ/PLY/opsiyonel GLB/STL, ZIP paket.”
+
+⸻
+
+2) Kullanıcı Akışı (2 ekran)
+
+A. Üretim (Shap-E)
+	1.	Prompt yaz (max 500 karakter, sayaçlı) veya tek görsel yükle (PNG/JPG, max 5 MB).
+	2.	“Oluştur” → Shap-E çalışır → GIF + OBJ/PLY(+GLB) üretir.
+	3.	İndir: OBJ, PLY, GLB, GIF, ZIP.
+
+B. Düzenleme (Blender headless + trimesh/open3d)
+	1.	Model seç (son üretimler listesi / dışarıdan OBJ/PLY yükle).
+	2.	İki yol
+	•	Prompt’la hızlı komut: “kaide ekle 50mm”, “içi boşalt 1.6mm”, “delik 5mm”.
+	•	Manuel araçlar: Scale, Rotate, Translate, Boolean (delik/kütle), Hollow/Thickness, Slice/Split, Smooth/Decimate, Yazı ekle, İsimlik tabanı ekle, Auto-repair.
+	3.	Önizleme (3D viewer) + Undo/Redo + Önce/Sonra.
+	4.	İndir: OBJ/PLY/GLB/STL + ZIP.
+
+⸻
+
+3) Teknik Sınırlar (UI tasarımına girecek)
+	•	Prompt: serbest metin, maks 500 karakter (sayaç zorunlu).
+	•	Görsel: tek dosya, PNG/JPG, max 5 MB (yüklemede kontrol).
+	•	Shap-E: tek işlemde 1 prompt / 1 görsel.
+	•	Çalışma süresi: 30–120 sn (bekleme animasyonu + iptal butonu).
+	•	Çıktı formatları: OBJ/PLY zorunlu, GLB/GIF opsiyon, STL düzenleme sonrası.
+
+⸻
+
+4) Mimari (tek repo, Python ağırlıklı)
+
+shapeplay3d/
+  core/
+    shap_e_runner.py        # prompt/görsel → mesh + gif
+    preview_gif.py
+    zip_utils.py
+  mesh_ops/
+    blender_scripts/        # headless blender python scriptleri
+      add_base.py
+      add_text.py
+      boolean_ops.py
+      hollow_thickness.py
+      slice_split.py
+      repair_utils.py
+    pyops/                  # hızlı işlemler (trimesh/open3d)
+      repair.py
+      decimate.py
+  app_gui/                  # PySide6 (Qt) arayüz
+    main.py
+    screens/
+      generate_view.py      # üretim ekranı
+      edit_view.py          # düzenleme ekranı
+    widgets/
+      viewer_3d.py          # GLB/OBJ önizleme (QtWebEngine + three.js)
+  cli/
+    cli_app.py              # Typer: tek komutla üret & düzenle
+  assets/
+    fonts/                  # yazı ekleme için temel fontlar (OFL/MIT lisanslı)
+    icons/
+  output/                   # varsayılan çıktı klasörü
+  env/                      # conda/uv pip env tanımları
+  README.md
+
+Neden Python?
+	•	Shap-E zaten Python ekosisteminde.
+	•	Blender headless Python API ile yönetiliyor.
+	•	PySide6 ile “tek dosya” masaüstü app hissi.
+	•	Typer ile aynı kod tabanından CLI veriyoruz.
+	•	Senin öğrenme hedeflerin (FastAPI, Python) ile uyumlu.
+
+⸻
+
+5) Ana Bileşenler ve Kütüphaneler (tamamı ücretsiz)
+	•	Shap-E (MIT) – model üretim
+	•	PyTorch + MPS (Apple GPU) – hızlandırma
+	•	Blender (headless, GPL) – net mesh işlemleri
+	•	trimesh (MIT), open3d (MIT) – hafif/seri işlemler
+	•	PySide6 (Qt) – GUI
+	•	Typer (MIT) – CLI
+	•	imageio / pillow / numpy – yardımcı
+	•	three.js (MIT) – 3D web viewer (QtWebEngine içinde)
+
+⸻
+
+6) GUI – Ekran Tasarım Notları
+
+Üretim Ekranı
+	•	Prompt textarea (500 limit + sayaç)
+	•	“Resim yükle” (drag&drop + buton)
+	•	“Oluştur” + loading bar + “İptal”
+	•	Önizleme (GIF)
+	•	İndir butonları: OBJ, PLY, GLB, GIF, ZIP
+	•	Hata durumları: uzun prompt, büyük görsel, desteklenmeyen format
+
+Düzenleme Ekranı
+	•	Model seçici (galeri/list) + “Dışarıdan yükle”
+	•	Hızlı komut (prompt) kutusu (200 karakter)
+	•	Araç paleti (ikon + yan panel parametreleri):
+	•	Transform (Scale/Rotate/Translate)
+	•	Boolean (Add/Cut → küp/silindir/küre; çap/yükseklik/konum)
+	•	Hollow/Thickness (mm)
+	•	Slice/Split (düzlem seç, parça sayısı)
+	•	Smooth/Decimate (hedef face sayısı %)
+	•	Yazı Ekle: metin (≤30 karakter), font, kalınlık (mm), yükseklik (mm), konum (üst/alt/yan/manüel XYZ), Kabartma/Oyma
+	•	İsimlik Tabanı Ekle: şekil (daire/kare/üçgen/altıgen/dikdörtgen/oval), otomatik boyut (objeye göre %120) veya manuel mm, kalınlık, yazı (metin + font + kabartma/oyma, otomatik ortalama)
+	•	Auto-repair (manifold, normal, self-intersection)
+	•	3D Viewer (orbit/pan/zoom) + Önce/Sonra + Undo/Redo
+	•	İndir: OBJ/PLY/GLB/STL, ZIP
+
+⸻
+
+7) CLI Örnekleri (Typer)
+
+# Prompt'tan üret
+shapeplay gen --prompt "kırmızı-siyah maskeli bir büst" --out ./output/run1
+
+# Görselden üret
+shapeplay gen --image ./in/ref.png --out ./output/run2
+
+# Düzenleme: kaide ekle + içini boşalt + STL al
+shapeplay edit --in ./output/run1/model.obj \
+  --add-base shape=circle diameter=50 height=6 \
+  --hollow wall=1.6 \
+  --export stl --out ./output/run1_edit
+
+
+⸻
+
+8) Önemli Teknik Ayrıntılar
+	•	MPS etkin PyTorch: Apple Silicon GPU hızlanması için PYTORCH_ENABLE_MPS_FALLBACK=1.
+	•	Blender headless çağrısı:
+blender --background --python mesh_ops/blender_scripts/add_base.py -- model.obj --shape circle --diameter 50 --height 6
+	•	GIF üretimi: üç açıdan render (Shap-E veya Blender viewport) → imageio.mimsave.
+	•	Auto-repair: önce trimesh.repair hızlı deneme; başarısızsa Blender’da derin onarım.
+	•	STL sadece düzenleme aşamasında (yüzey sağlığı kontrolünden sonra) üretilir.
+	•	Log/Sürüm: her işleme metadata.json (prompt, seed, parametreler, zaman, sürüm).
+	•	ZIP: tüm çıktı + metadata + küçük önizleme görselleri.
+
+⸻
+
+9) Kurulum (Mac – tek seferlik)
+	1.	Homebrew ile Blender: brew install --cask blender
+	2.	Python 3.11+ (uv/pip/conda, tercihen uv):
+	•	PyTorch (MPS): pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+(MPS desteği için ek paket talimatları README’de verilecek)
+	•	pip install pyside6 typer trimesh open3d imageio pillow numpy
+	•	Shap-E bağımlılıkları (repo içi requirements.txt)
+	3.	Uygulama çalıştır:
+	•	GUI: python app_gui/main.py
+	•	CLI: python cli/cli_app.py ...
+	4.	(İsteğe bağlı) PyInstaller ile tek paket Mac app.
+
+⸻
+
+10) Görev Kırılımı (ekibe atama)
+
+A. Çekirdek – Shap-E entegrasyonu (2–3 iş günü)
+	•	prompt/görsel → mesh + gif pipeline
+	•	MPS hızlandırma + hata yönetimi
+	•	GLB opsiyonel export
+
+B. Mesh Ops – Blender headless scriptleri (4–6 iş günü)
+	•	add_base / add_text / boolean / hollow / slice / repair / decimate
+	•	parametre sözleşmesi (mm/derece) + test mesh’leri
+	•	STL export ve doğrulama
+
+C. GUI – PySide6 (5–7 iş günü)
+	•	Üretim ekranı + Düzenleme ekranı
+	•	3D viewer (QtWebEngine + three.js)
+	•	Undo/Redo + Önce/Sonra
+	•	İndirme/ZIP ve hata mesajları
+
+D. CLI – Typer (1–2 iş günü)
+	•	gen ve edit komutları, parametreler
+	•	Ortak çıktı dizin yapısı + metadata.json
+
+E. Paketleme & Dokümantasyon (1–2 iş günü)
+	•	README (kurulum, kullanım)
+	•	PyInstaller ile Mac app (opsiyonel)
+	•	Örnek veri + “Hızlı Başlangıç”
+
+Toplam ilk sürüm (MVP) tahmini: ~2–3 hafta (tek ekip, paralel çalışmayla daha kısa).
+
+⸻
+
+11) Kabul Kriterleri (MVP)
+	•	Prompt/görsel gir → ≤120 sn içinde GIF + OBJ/PLY üret.
+	•	Düzenle: kaide ekle, içi boşalt, delik aç parametreleri çalışır.
+	•	Yazı ekle (≤30 karakter) kabartma/oyma çalışır ve yerleşim doğru.
+	•	İsimlik tabanı (daire/kare/üçgen/altıgen/oval/dikdörtgen) + otomatik boyutlandırma çalışır.
+	•	Auto-repair sonrası STL export mümkün.
+	•	ZIP tek butonla iner (mesh + gif + metadata).
+	•	İşlemler Undo/Redo ve Önce/Sonra ile izlenir.
+
+⸻
+
+12) Lisans ve Maliyet
+	•	Tüm kütüphaneler ücretsiz ve açık kaynak (MIT/GPL/Apache).
+	•	Çalışma tamamen lokal (Mac), cloud maliyeti yok.
+
+⸻
+
+13) Risk & Çözüm
+	•	Shap-E model çıktısı pürüzlü → düzenleme sekmesinde repair + smooth/decimate hazır.
+	•	Çok detaylı modelde hız → parametrik limitler, “hızlı mod” (düşük poly) seçeneği.
+	•	Font lisansı → OFL/MIT lisanslı fontlar repo’ya dahil.
+
+⸻
+
+14) Gelecek (opsiyonel V2)
+	•	Çoklu açıdan image-conditioned varyasyon (yaratıcı revizyonlar)
+	•	Parametrik presetler (Anahtarlık, Büst Kaidesi, Kupa Altlığı)
+	•	Batch üretim/senetleme
+	•	Tauri ile daha hafif Mac uygulaması
+
+⸻
+
+Son söz (PM mesajı):
+“MacBook’ta tamamen lokal çalışan, Shap-E ile 3D üreten; aynı uygulamada Blender headless ve trimesh ile modeli düzenleyip isimlik tabanı ve yazı ekleyen; STL/OBJ/PLY/GLB ve GIF/ZIP çıktıları veren, GUI + CLI’li bir uygulama istiyorum. Ücretsiz kütüphanelerle yapılacak, lisans engeli yok. Yukarıdaki görev kırılımı ve kabul kriterleriyle MVP’yi alabiliriz.”
